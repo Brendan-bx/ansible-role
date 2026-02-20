@@ -1,0 +1,88 @@
+---
+# Tâches pour installer et configurer k3d lab
+
+- name: Install curl and ca-certificates (Debian/Ubuntu)
+  apt:
+    name:
+      - curl
+      - ca-certificates
+    state: present
+    update_cache: true
+  when: ansible_facts['os_family'] == 'Debian'
+
+- name: Install ca-certificates (Red Hat / SUSE)
+  package:
+    name: ca-certificates
+    state: present
+  when: ansible_facts['os_family'] in ['RedHat', 'SUSE']
+
+- name: Install Docker
+  shell: |
+    curl -fsSL https://get.docker.com -o get-docker.sh
+    chmod +x get-docker.sh
+    ./get-docker.sh
+  args:
+    creates: /usr/bin/docker
+
+- name: Reload systemd (après installation Docker)
+  systemd:
+    daemon_reload: true
+
+- name: Enable and start Docker service
+  systemd:
+    name: docker
+    state: started
+    enabled: true
+  ignore_errors: true
+
+- name: Add user to docker group
+  user:
+    name: "{{ k3d_docker_user }}"
+    groups: docker
+    append: true
+
+- name: Install k3d
+  shell: curl -fsSL https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | bash
+  args:
+    creates: /usr/local/bin/k3d
+
+- name: Install kubectl
+  get_url:
+    url: "https://dl.k8s.io/release/{{ lookup('url', 'https://dl.k8s.io/release/stable.txt', split_lines=false) | trim }}/bin/linux/amd64/kubectl"
+    dest: /usr/local/bin/kubectl
+    mode: "0755"
+
+- name: Supprimer le cluster existant s'il existe
+  shell: k3d cluster delete {{ k3d_cluster_name }}
+  ignore_errors: true
+
+- name: Create k3d cluster
+  shell: k3d cluster create {{ k3d_cluster_name }} --agents {{ k3d_agents }} --port "{{ k3d_port_mapping }}" --kubeconfig-update-default --kubeconfig-switch-context
+  environment:
+    KUBECONFIG: "{{ k3d_kubeconfig_path }}"
+
+- name: Attendre que le cluster soit prêt
+  pause:
+    seconds: "{{ k3d_cluster_wait_seconds }}"
+
+- name: Vérifier que kubectl peut se connecter au cluster
+  shell: kubectl cluster-info
+  register: cluster_info
+  until: cluster_info.rc == 0
+  retries: "{{ k3d_cluster_check_retries }}"
+  delay: "{{ k3d_cluster_check_delay }}"
+  environment:
+    KUBECONFIG: "{{ k3d_kubeconfig_path }}"
+
+- name: Deploy manifest
+  shell: kubectl apply -f "{{ role_path }}/files/{{ k3d_manifest_file }}"
+  environment:
+    KUBECONFIG: "{{ k3d_kubeconfig_path }}"
+  when: k3d_manifest_file is defined
+
+- name: Attendre que le déploiement soit prêt
+  shell: kubectl rollout status deployment/nginx --timeout={{ k3d_rollout_timeout }}s
+  ignore_errors: true
+  environment:
+    KUBECONFIG: "{{ k3d_kubeconfig_path }}"
+  when: k3d_manifest_file is defined

@@ -1,0 +1,32 @@
+---
+# Variables par défaut pour le rôle k3d-lab
+
+# Nom du cluster k3d
+k3d_cluster_name: my-cluster
+
+# Nombre d'agents dans le cluster
+k3d_agents: 2
+
+# Port mapping pour le loadbalancer (format: "host_port:container_port@loadbalancer")
+k3d_port_mapping: "30080:30080@loadbalancer"
+
+# Nom de l'utilisateur à ajouter au groupe docker (par défaut: utilisateur actuel)
+k3d_docker_user: "{{ ansible_user_id }}"
+
+# Chemin vers le fichier kubeconfig
+k3d_kubeconfig_path: "{{ ansible_env.HOME }}/.kube/config"
+
+# Nom du manifest Kubernetes à déployer
+k3d_manifest_file: nginx.yaml
+
+# Attendre que le cluster soit prêt (en secondes)
+k3d_cluster_wait_seconds: 5
+
+# Nombre de tentatives pour vérifier la connexion au cluster
+k3d_cluster_check_retries: 10
+
+# Délai entre les tentatives de vérification (en secondes)
+k3d_cluster_check_delay: 2
+
+# Timeout pour le rollout du déploiement (en secondes)
+k3d_rollout_timeout: 120
