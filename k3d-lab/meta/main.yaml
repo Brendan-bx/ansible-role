@@ -1,6 +1,9 @@
+---
 galaxy_info:
   author: "Brendan"
   description: "Role to install k3d lab"
   company: "K423"
   license: "MIT"
+  min_ansible_version: "2.9"
+  role_name: "k3d_lab"
   version: "1.0.0"
