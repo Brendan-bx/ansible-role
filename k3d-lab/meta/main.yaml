@@ -1,0 +1,6 @@
+galaxy_info:
+  author: "Brendan"
+  description: "Role to install k3d lab"
+  company: "K423"
+  license: "MIT"
+  version: "1.0.0"
